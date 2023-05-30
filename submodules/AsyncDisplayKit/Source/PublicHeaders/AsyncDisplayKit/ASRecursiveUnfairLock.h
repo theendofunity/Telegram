@@ -11,11 +11,11 @@
 #import <AsyncDisplayKit/ASBaseDefines.h>
 #import <pthread/pthread.h>
 
-#if defined(__aarch64__)
-    #define AS_USE_OS_LOCK true
-#else
-    #define AS_USE_OS_LOCK false
-#endif
+//#if defined(__aarch64__)
+#define AS_USE_OS_LOCK true
+//#else
+//    #define AS_USE_OS_LOCK false
+//#endif
 
 #if AS_USE_OS_LOCK
 
