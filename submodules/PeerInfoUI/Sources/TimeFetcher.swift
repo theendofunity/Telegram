@@ -15,8 +15,14 @@ final class TimeFetcher {
     
     func fetchCurrentTime() -> Signal<DateTimeEntity?, MediaResourceDataFetchError> {
         fetchHttpResource(url: url)
+        |> filter({ result in
+            guard case let .dataPart(_, _, _, complete) = result, complete else {
+                return false
+            }
+            
+            return true
+        })
         |> map { [weak self] result in
-            print(#function, result)
             switch result {
             case let .dataPart(_, data, _, completed):
                 return self?.decodeDateTime(data: data, completed: completed)
@@ -36,7 +42,7 @@ final class TimeFetcher {
 }
 
 struct DateTimeEntity: Codable {
-    let unixTime: Int
+    let unixTime: Int32
     
     private enum CodingKeys: String, CodingKey {
         case unixTime = "unixtime"
