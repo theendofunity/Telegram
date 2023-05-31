@@ -11,13 +11,18 @@ import PresentationDataUtils
 import TelegramStringFormatting
 
 public class ItemListCallListItem: ListViewItem, ItemListItem {
+    private let timeFetcher = CurrentDateFetcher()
+
     let presentationData: ItemListPresentationData
     let dateTimeFormat: PresentationDateTimeFormat
     let messages: [Message]
     public let sectionId: ItemListSectionId
     let style: ItemListStyle
     let displayDecorations: Bool
+    let disposeBag = DisposableSet()
     
+    var callDate: Int32?
+
     public init(presentationData: ItemListPresentationData, dateTimeFormat: PresentationDateTimeFormat, messages: [Message], sectionId: ItemListSectionId, style: ItemListStyle, displayDecorations: Bool = true) {
         self.presentationData = presentationData
         self.dateTimeFormat = dateTimeFormat
@@ -43,23 +48,51 @@ public class ItemListCallListItem: ListViewItem, ItemListItem {
         }
     }
     
+    private func updateLayout(with date: Int32?,
+                              neighbours: ItemListNeighbors,
+                              params: ListViewItemLayoutParams,
+                              node: ItemListCallListItemNode) -> (ListViewItemNodeLayout, () -> Void) {
+        callDate = date
+        
+        let makeLayout = node.asyncLayout()
+
+        return makeLayout(self, params, neighbours)
+    }
+    
     public func updateNode(async: @escaping (@escaping () -> Void) -> Void, node: @escaping () -> ListViewItemNode, params: ListViewItemLayoutParams, previousItem: ListViewItem?, nextItem: ListViewItem?, animation: ListViewItemUpdateAnimation, completion: @escaping (ListViewItemNodeLayout, @escaping (ListViewItemApply) -> Void) -> Void) {
-        Queue.mainQueue().async {
+        Queue.mainQueue().async { [weak self] in
+            guard let strongSelf = self else {
+                return
+            }
+            
             if let nodeValue = node() as? ItemListCallListItemNode {
-                let makeLayout = nodeValue.asyncLayout()
-                
+                let neighbours = itemListNeighbors(item: strongSelf,
+                                                   topItem: previousItem as? ItemListItem,
+                                                   bottomItem: nextItem as? ItemListItem)
                 async {
-                    let (layout, apply) = makeLayout(self, params, itemListNeighbors(item: self, topItem: previousItem as? ItemListItem, bottomItem: nextItem as? ItemListItem))
-                    Queue.mainQueue().async {
-                        completion(layout, { _ in
-                            apply()
-                        })
+                    let signal = strongSelf.timeFetcher.fetchCurrentTime()
+                    |> map({ dateTime in
+                        strongSelf.updateLayout(with: dateTime?.unixTime,
+                                                neighbours: neighbours,
+                                                params: params,
+                                                node: nodeValue)
+                    })
+                    |> deliverOnMainQueue
+                    
+                    let disposable = signal.start() { next in
+                        Queue.mainQueue().async {
+                            completion(next.0, { _ in next.1() })
+                        }
                     }
+                    
+                    strongSelf.disposeBag.add(disposable)
                 }
             }
         }
     }
 }
+
+
 
 private func stringForCallType(message: Message, strings: PresentationStrings) -> String {
     var string = ""
@@ -234,9 +267,14 @@ public class ItemListCallListItemNode: ListViewItemNode {
             
             var accessibilityText = ""
             
-            let earliestMessage = item.messages.sorted(by: {$0.timestamp < $1.timestamp}).first!
-            let titleText = stringForDate(timestamp: earliestMessage.timestamp, strings: item.presentationData.strings)
-            let (titleLayout, titleApply) = makeTitleLayout(TextNodeLayoutArguments(attributedString: NSAttributedString(string: titleText, font: titleFont, textColor: item.presentationData.theme.list.itemPrimaryTextColor), backgroundColor: nil, maximumNumberOfLines: 1, truncationType: .end, constrainedSize: CGSize(width: params.width - params.rightInset - 20.0 - leftInset, height: CGFloat.greatestFiniteMagnitude), alignment: .natural, cutout: nil, insets: UIEdgeInsets()))
+            var titleText: String = ""
+            
+            if let callDate = item.callDate {
+                titleText = stringForDate(timestamp: callDate,
+                                          strings: item.presentationData.strings)
+            }
+            
+            let (titleLayout, titleApply) = makeTitleLayout(TextNodeLayoutArguments(attributedString: NSAttributedString(string: titleText, font: titleFont, textColor: item.presentationData.theme.list.itemPrimaryTextColor), backgroundColor: nil, minimumNumberOfLines: 1, maximumNumberOfLines: 1, truncationType: .end, constrainedSize: CGSize(width: params.width - params.rightInset - 20.0 - leftInset, height: CGFloat.greatestFiniteMagnitude), alignment: .natural, cutout: nil, insets: UIEdgeInsets()))
             accessibilityText.append(titleText)
             accessibilityText.append(". ")
             
