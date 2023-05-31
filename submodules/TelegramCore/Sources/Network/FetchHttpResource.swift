@@ -16,7 +16,7 @@ public func fetchHttpResource(url: String) -> Signal<MediaResourceDataFetchResul
                 } else {
                     subscriber.putError(.generic)
                 }
-            }, error: { error in
+            }, error: { _ in
                 subscriber.putError(.generic)
             }, completed: {
             })
