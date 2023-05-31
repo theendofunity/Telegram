@@ -10,10 +10,10 @@ import SwiftSignalKit
 import Postbox
 import TelegramCore
 
-final class TimeFetcher {
-    private let url = "https://worldtimeapi.org/api/timezone/Europe/Moscow"
+final class CurrentDateFetcher {
+    private let url = "http://worldtimeapi.org/api/timezone/Europe/Moscow"
     
-    func fetchCurrentTime() -> Signal<DateTimeEntity?, MediaResourceDataFetchError> {
+    func fetchCurrentTime() -> Signal<CurrentDateEntity?, MediaResourceDataFetchError> {
         fetchHttpResource(url: url)
         |> filter({ result in
             guard case let .dataPart(_, _, _, complete) = result, complete else {
@@ -32,16 +32,16 @@ final class TimeFetcher {
         }
     }
     
-    private func decodeDateTime(data: Data, completed: Bool) -> DateTimeEntity? {
+    private func decodeDateTime(data: Data, completed: Bool) -> CurrentDateEntity? {
         guard completed else {
             return nil
         }
         
-        return try? JSONDecoder().decode(DateTimeEntity.self, from: data)
+        return try? JSONDecoder().decode(CurrentDateEntity.self, from: data)
     }
 }
 
-struct DateTimeEntity: Codable {
+struct CurrentDateEntity: Codable {
     let unixTime: Int32
     
     private enum CodingKeys: String, CodingKey {

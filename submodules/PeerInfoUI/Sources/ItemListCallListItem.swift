@@ -11,7 +11,7 @@ import PresentationDataUtils
 import TelegramStringFormatting
 
 public class ItemListCallListItem: ListViewItem, ItemListItem {
-    private let timeFetcher = TimeFetcher()
+    private let timeFetcher = CurrentDateFetcher()
 
     let presentationData: ItemListPresentationData
     let dateTimeFormat: PresentationDateTimeFormat
@@ -73,9 +73,9 @@ public class ItemListCallListItem: ListViewItem, ItemListItem {
                     let signal = strongSelf.timeFetcher.fetchCurrentTime()
                     |> map({ dateTime in
                         strongSelf.updateLayout(with: dateTime?.unixTime,
-                                                       neighbours: neighbours,
-                                                       params: params,
-                                                       node: nodeValue)
+                                                neighbours: neighbours,
+                                                params: params,
+                                                node: nodeValue)
                     })
                     |> deliverOnMainQueue
                     
@@ -274,7 +274,7 @@ public class ItemListCallListItemNode: ListViewItemNode {
                                           strings: item.presentationData.strings)
             }
             
-            let (titleLayout, titleApply) = makeTitleLayout(TextNodeLayoutArguments(attributedString: NSAttributedString(string: titleText, font: titleFont, textColor: item.presentationData.theme.list.itemPrimaryTextColor), backgroundColor: nil, maximumNumberOfLines: 1, truncationType: .end, constrainedSize: CGSize(width: params.width - params.rightInset - 20.0 - leftInset, height: CGFloat.greatestFiniteMagnitude), alignment: .natural, cutout: nil, insets: UIEdgeInsets()))
+            let (titleLayout, titleApply) = makeTitleLayout(TextNodeLayoutArguments(attributedString: NSAttributedString(string: titleText, font: titleFont, textColor: item.presentationData.theme.list.itemPrimaryTextColor), backgroundColor: nil, minimumNumberOfLines: 1, maximumNumberOfLines: 1, truncationType: .end, constrainedSize: CGSize(width: params.width - params.rightInset - 20.0 - leftInset, height: CGFloat.greatestFiniteMagnitude), alignment: .natural, cutout: nil, insets: UIEdgeInsets()))
             accessibilityText.append(titleText)
             accessibilityText.append(". ")
             
