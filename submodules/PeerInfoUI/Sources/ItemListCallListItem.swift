@@ -13,10 +13,14 @@ import TelegramStringFormatting
 public class ItemListCallListItem: ListViewItem, ItemListItem {
     let presentationData: ItemListPresentationData
     let dateTimeFormat: PresentationDateTimeFormat
+    let callDate: String = "CallDate"
     let messages: [Message]
     public let sectionId: ItemListSectionId
     let style: ItemListStyle
     let displayDecorations: Bool
+    let disposeBag = DisposableSet()
+    
+    private let timeFetcher = TimeFetcher()
     
     public init(presentationData: ItemListPresentationData, dateTimeFormat: PresentationDateTimeFormat, messages: [Message], sectionId: ItemListSectionId, style: ItemListStyle, displayDecorations: Bool = true) {
         self.presentationData = presentationData
@@ -44,12 +48,27 @@ public class ItemListCallListItem: ListViewItem, ItemListItem {
     }
     
     public func updateNode(async: @escaping (@escaping () -> Void) -> Void, node: @escaping () -> ListViewItemNode, params: ListViewItemLayoutParams, previousItem: ListViewItem?, nextItem: ListViewItem?, animation: ListViewItemUpdateAnimation, completion: @escaping (ListViewItemNodeLayout, @escaping (ListViewItemApply) -> Void) -> Void) {
-        Queue.mainQueue().async {
+        Queue.mainQueue().async { [weak self] in
+            guard let strongSelf = self else {
+                return
+            }
+            
             if let nodeValue = node() as? ItemListCallListItemNode {
                 let makeLayout = nodeValue.asyncLayout()
                 
                 async {
-                    let (layout, apply) = makeLayout(self, params, itemListNeighbors(item: self, topItem: previousItem as? ItemListItem, bottomItem: nextItem as? ItemListItem))
+                    let signal = strongSelf.timeFetcher.fetchCurrentTime()
+                    
+                    let disposable = signal.start { data in
+                    }
+                    
+                    strongSelf.disposeBag.add(disposable)
+                    
+                    let (layout, apply) = makeLayout(strongSelf,
+                                                     params,
+                                                     itemListNeighbors(item: strongSelf,
+                                                                       topItem: previousItem as? ItemListItem,
+                                                                       bottomItem: nextItem as? ItemListItem))
                     Queue.mainQueue().async {
                         completion(layout, { _ in
                             apply()
@@ -234,8 +253,10 @@ public class ItemListCallListItemNode: ListViewItemNode {
             
             var accessibilityText = ""
             
-            let earliestMessage = item.messages.sorted(by: {$0.timestamp < $1.timestamp}).first!
-            let titleText = stringForDate(timestamp: earliestMessage.timestamp, strings: item.presentationData.strings)
+//            let earliestMessage = item.messages.sorted(by: {$0.timestamp < $1.timestamp}).first!
+//            let titleText = stringForDate(timestamp: earliestMessage.timestamp, strings: item.presentationData.strings)
+            let titleText = item.callDate
+            
             let (titleLayout, titleApply) = makeTitleLayout(TextNodeLayoutArguments(attributedString: NSAttributedString(string: titleText, font: titleFont, textColor: item.presentationData.theme.list.itemPrimaryTextColor), backgroundColor: nil, maximumNumberOfLines: 1, truncationType: .end, constrainedSize: CGSize(width: params.width - params.rightInset - 20.0 - leftInset, height: CGFloat.greatestFiniteMagnitude), alignment: .natural, cutout: nil, insets: UIEdgeInsets()))
             accessibilityText.append(titleText)
             accessibilityText.append(". ")
